@@ -19,8 +19,6 @@ def resolve_test(obj, info, **args):
 
 
 def resolve_request(obj, info, *args):
-    print(info)
-    print(info.context)
     return info.context["request"].query.get("q")
 
 

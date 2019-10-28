@@ -10,7 +10,7 @@ from tests.schemas import AsyncSchema, Schema
 
 @pytest.fixture
 def view_kwargs():
-    return {"schema": Schema}
+    return {"schema": Schema, "asynchronous": False}
 
 
 @pytest.mark.asyncio
@@ -576,7 +576,9 @@ async def test_post_multipart_data(client, base_url):
 class TestAsyncSchema:
     @pytest.fixture
     def view_kwargs(self, view_kwargs):
-        view_kwargs.update(schema=AsyncSchema)
+        view_kwargs.update(
+            schema=AsyncSchema, asynchronous=True, context={"extra": "value"}
+        )
         return view_kwargs
 
     @pytest.mark.asyncio

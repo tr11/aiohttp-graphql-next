@@ -145,7 +145,7 @@ class GraphQLView:
 
         # Validate Schema
         schema_validation_errors = validate_schema(self.schema)
-        if schema_validation_errors:
+        if schema_validation_errors:  # pragma: no cover
             return self.encode_response(
                 request,
                 ExecutionResult(data=None, errors=schema_validation_errors),
@@ -171,7 +171,7 @@ class GraphQLView:
             return self.encode_response(
                 request, ExecutionResult(data=None, errors=[error]), invalid=True
             )
-        except Exception as error:
+        except Exception as error:  # pragma: no cover
             error = GraphQLError(str(error), original_error=error)
             return self.encode_response(
                 request, ExecutionResult(data=None, errors=[error]), invalid=True
@@ -196,7 +196,7 @@ class GraphQLView:
                 context_value=context,
                 middleware=self.middleware,
             )
-            if isawaitable(result):
+            if isawaitable(result):  # pragma: no branch
                 result = await cast(Awaitable[ExecutionResult], result)
         else:
             result = self._graphql(
@@ -266,7 +266,9 @@ class GraphQLView:
         else:
             context = {}
 
-        if isinstance(context, Mapping) and "request" not in context:
+        if (  # pragma: no branch
+            isinstance(context, Mapping) and "request" not in context
+        ):
             context.update({"request": request})  # type: ignore
         return cast(Mapping, context)
 
