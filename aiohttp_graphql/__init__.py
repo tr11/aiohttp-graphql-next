@@ -1,29 +1,26 @@
 """aiohttp GraphQL view package."""
 
-from collections import Mapping
 import json
+from collections import Mapping
 from inspect import isawaitable
-from typing import Any, Dict, List, Optional, Union, cast, Type, Awaitable
+from typing import Any, Awaitable, Dict, List, Optional, Type, Union, cast
 
 from aiohttp.web import Application, Request, Response
 
 from graphql import (
-    GraphQLSchema,
-    # get_operation_ast,
-    graphql,
-    graphql_sync,
+    DocumentNode,
+    ExecutionContext,
     ExecutionResult,
     GraphQLError,
-    parse,
-    get_operation_ast,
-    validate_schema,
-    execute,
-    Source,
     GraphQLFieldResolver,
+    GraphQLSchema,
     GraphQLTypeResolver,
-    ExecutionContext,
-    validate,
     OperationType,
+    execute,
+    get_operation_ast,
+    parse,
+    validate,
+    validate_schema,
 )
 from graphql.execution import Middleware
 from graphql.pyutils import AwaitableOrValue
@@ -73,13 +70,13 @@ class GraphQLView:
     def _graphql(
         self,
         schema: GraphQLSchema,
-        document,
+        document: DocumentNode,
         root_value: Any = None,
         context_value: Any = None,
-        variable_values: Dict[str, Any] = None,
-        operation_name: str = None,
-        field_resolver: GraphQLFieldResolver = None,
-        type_resolver: GraphQLTypeResolver = None,
+        variable_values: Dict[str, Any] = None,  # type: ignore
+        operation_name: str = None,  # type: ignore
+        field_resolver: GraphQLFieldResolver = None,  # type: ignore
+        type_resolver: GraphQLTypeResolver = None,  # type: ignore
         middleware: Middleware = None,
         execution_context_class: Type[ExecutionContext] = ExecutionContext,
     ) -> AwaitableOrValue[ExecutionResult]:
@@ -132,12 +129,9 @@ class GraphQLView:
         variables.update(
             vars_dyn if isinstance(vars_dyn, dict) else json.loads(vars_dyn)
         )
-        query = data.get("query")
+        query = cast(str, data.get("query"))
         context = self.get_context(request)
         invalid = False
-
-        print("DATA:", data)
-        print("CONTEXT:", self.context)
 
         if not data.get("query"):
             return self.encode_response(
@@ -192,8 +186,6 @@ class GraphQLView:
                 invalid=True,
             )
 
-        print("PASSED VALIDATION")
-
         if self.asynchronous:
             result = self._graphql(
                 self.schema,
@@ -217,9 +209,14 @@ class GraphQLView:
                 middleware=self.middleware,
             )
 
-        return self.encode_response(request, result, invalid=invalid)
+        return self.encode_response(
+            request, cast(ExecutionResult, result), invalid=invalid
+        )
 
-    def encode_response(self, request, result, invalid: bool = False) -> Response:
+    def encode_response(
+        self, request: Request, result: ExecutionResult, invalid: bool = False
+    ) -> Response:
+        """Construct an aiohttp.Response from an execution result."""
         if result.errors:
             response: ResultDataType = cast(
                 ResultDataFailType,
@@ -238,17 +235,23 @@ class GraphQLView:
         else:
             response = cast(ResultDataSuccessType, {"data": result.data})
 
-        print(response, invalid)
-
         status_code = 200 if not invalid else 400
 
         return Response(
-            text=self.json_encode(response, self.is_pretty(request)),
+            text=self.json_encode(
+                cast(Dict[str, Any], response), self.is_pretty(request)
+            ),
             status=status_code,
             content_type="application/json",
         )
 
-    def error_response(self, message: str, status_code: int = 400, headers=None):
+    def error_response(
+        self,
+        message: str,
+        status_code: int = 400,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> Response:
+        """Construct an aiohttp.Response from a failed execution."""
         return Response(
             text=json.dumps({"errors": [{"message": message}]}),
             status=status_code,
@@ -257,22 +260,25 @@ class GraphQLView:
         )
 
     def get_context(self, request: Request) -> Mapping:
+        """Return the context."""
         if self.context and isinstance(self.context, Mapping):
-            context = self.context.copy()
+            context = self.context.copy()  # type: ignore
         else:
             context = {}
 
         if isinstance(context, Mapping) and "request" not in context:
-            context.update({"request": request})
-        return context
+            context.update({"request": request})  # type: ignore
+        return cast(Mapping, context)
 
-    def json_encode(self, response: Dict[str, Any], pretty: bool = False):
+    def json_encode(self, response: Dict[str, Any], pretty: bool = False) -> str:
+        """Convert a response to json."""
         if pretty:
             return json.dumps(response, indent=2)
         else:
             return json.dumps(response, separators=(",", ":"))
 
-    def is_pretty(self, request):
+    def is_pretty(self, request: Request) -> bool:
+        """Return whether the resulting json should be indented."""
         return any(
             [
                 self.pretty,
