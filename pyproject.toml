@@ -9,6 +9,7 @@ python = "^3.7"
 graphene = {version = ">=3.0.dev20190817210753",optional = true,allows-prereleases = true}
 graphql-core = {version = ">=3.0.0b1",allows-prereleases = true}
 aiohttp = "^3.6"
+jinja2 = "^2.10"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.0"
@@ -28,5 +29,5 @@ pytest-asyncio = "^0.10.0"
 graphene = ["graphene"]
 
 [build-system]
-requires = ["poetry>=0.12"]
+requires = ["poetry>=1.0.0b1"]
 build-backend = "poetry.masonry.api"

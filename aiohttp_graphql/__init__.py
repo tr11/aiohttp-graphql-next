@@ -3,7 +3,7 @@
 import json
 from collections import Mapping
 from inspect import isawaitable
-from typing import Any, Awaitable, Dict, List, Optional, Type, Union, cast
+from typing import Any, Awaitable, Dict, Iterable, List, Optional, Type, Union, cast
 
 from aiohttp.web import Application, Request, Response
 
@@ -33,6 +33,8 @@ from graphql.pyutils import AwaitableOrValue
 
 from mypy_extensions import TypedDict
 
+from .tools import GraphQLTool
+
 
 ResultDataSuccessType = TypedDict(
     "ResultDataSuccessType", {"data": Optional[Dict[str, Any]]}
@@ -54,6 +56,7 @@ class GraphQLView:
         max_age: int = 86400,
         pretty: bool = False,
         subscriptions: bool = False,
+        tool: Optional[GraphQLTool] = None,
     ):  # noqa: D403
         """
         GraphQL init.
@@ -72,6 +75,7 @@ class GraphQLView:
         self.max_age = max_age
         self.pretty = pretty
         self.subscriptions = subscriptions
+        self.tool = tool
 
         if graphene:
             if isinstance(self.schema, GrapheneSchema):
@@ -135,13 +139,18 @@ class GraphQLView:
                 headers={"Allow": "GET, POST"},
             )
 
-        vars_dyn = data.get("variables", {})
+        is_tool = self.is_tool(request)
+
+        vars_dyn = data.get("variables", {}) or {}
         variables.update(
             vars_dyn if isinstance(vars_dyn, dict) else json.loads(vars_dyn)
         )
         query = cast(str, data.get("query"))
         context = self.get_context(request)
         invalid = False
+
+        if isinstance(is_tool, GraphQLTool):
+            return await self.tool.render(query, variables, operation_name)
 
         if not data.get("query"):
             return self.encode_response(
@@ -291,11 +300,21 @@ class GraphQLView:
 
     def is_pretty(self, request: Request) -> bool:
         """Return whether the resulting json should be indented."""
-        return any(
+        return any([self.pretty, self.is_tool(request), request.query.get("pretty")])
+
+    def is_tool(self, request: Request) -> bool:
+        """Determine if the request should respond with a UI tool."""
+        return all(
             [
-                self.pretty,
-                # self.is_tool(request),
-                request.query.get("pretty"),
+                self.tool,
+                request.method.lower() == "get",
+                "raw" not in request.query,
+                any(
+                    [
+                        "text/html" in request.headers.get("accept", {}),
+                        "*/*" in request.headers.get("accept", {}),
+                    ]
+                ),
             ]
         )
 
@@ -351,12 +370,19 @@ class GraphQLView:
         *,
         route_path: str = "/graphql",
         route_name: str = "graphql",
+        tools: Iterable[GraphQLTool] = (),
         **kwargs
     ) -> None:
         """Attach the GraphQL view to the aiohttp app."""
-        instance = cls(**kwargs)
+        instance = kwargs.get("instance")
+        if not instance:
+            instance = cls(**kwargs)
 
         async def view(*args, **kwargs):  # type: ignore
             return await instance(*args, **kwargs)
 
         app.router.add_route("*", route_path, view, name=route_name)
+
+        for tool in tools:
+            tool.endpoint = route_path
+            app.router.add_get(tool.url, tool.view)
