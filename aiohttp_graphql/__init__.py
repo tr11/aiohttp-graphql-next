@@ -7,6 +7,12 @@ from typing import Any, Awaitable, Dict, List, Optional, Type, Union, cast
 
 from aiohttp.web import Application, Request, Response
 
+try:
+    import graphene
+    from graphene import Schema as GrapheneSchema
+except ImportError:
+    graphene = None
+
 from graphql import (
     DocumentNode,
     ExecutionContext,
@@ -66,6 +72,10 @@ class GraphQLView:
         self.max_age = max_age
         self.pretty = pretty
         self.subscriptions = subscriptions
+
+        if graphene:
+            if isinstance(self.schema, GrapheneSchema):
+                self.schema = self.schema.graphql_schema
 
     def _graphql(
         self,
