@@ -6,8 +6,9 @@ authors = ["Tiago Requeijo <tiago.requeijo.dev@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-graphene = {version = ">=3.0.dev20190817210753",optional = true,allows-prereleases = true}
-graphql-core = {version = ">=3.0.0b1",allows-prereleases = true}
+graphene = {version = ">=3.0.dev20190817210753",optional = true,allow-prereleases = true}
+graphql-relay = {git = "https://github.com/graphql-python/graphql-relay-py.git", branch = "next"}
+graphql-core = {version = ">=3.0.0b1",allow-prereleases = true}
 aiohttp = "^3.6"
 jinja2 = "^2.10"
 

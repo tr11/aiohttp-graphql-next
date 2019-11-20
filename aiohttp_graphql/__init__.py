@@ -10,7 +10,7 @@ from aiohttp.web import Application, Request, Response
 try:
     import graphene
     from graphene import Schema as GrapheneSchema
-except ImportError:
+except ImportError:  # pragma: no cover
     graphene = None
 
 from graphql import (
@@ -149,7 +149,7 @@ class GraphQLView:
         context = self.get_context(request)
         invalid = False
 
-        if isinstance(is_tool, GraphQLTool):
+        if is_tool:
             return await self.tool.render(query, variables, operation_name)
 
         if not data.get("query"):
