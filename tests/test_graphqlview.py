@@ -371,7 +371,7 @@ async def test_handles_syntax_errors_caught_by_graphql(client, url_builder):
         "errors": [
             {
                 "locations": [{"column": 1, "line": 1}],
-                "message": "Syntax Error: Unexpected Name 'syntaxerror'",
+                "message": "Syntax Error: Unexpected Name 'syntaxerror'.",
             }
         ]
     }

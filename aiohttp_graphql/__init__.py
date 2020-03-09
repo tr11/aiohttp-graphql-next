@@ -150,7 +150,8 @@ class GraphQLView:
         invalid = False
 
         if is_tool:
-            return await self.tool.render(query, variables, operation_name)
+            tool = cast(GraphQLTool, self.tool)
+            return await tool.render(query, variables, operation_name)
 
         if not data.get("query"):
             return self.encode_response(
