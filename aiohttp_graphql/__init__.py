@@ -382,7 +382,8 @@ class GraphQLView:
         async def view(*args, **kwargs):  # type: ignore
             return await instance(*args, **kwargs)
 
-        app.router.add_route("*", route_path, view, name=route_name)
+        for method in ('GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD'):
+            app.router.add_route(method, route_path, view, name=route_name)
 
         for tool in tools:
             tool.endpoint = route_path
